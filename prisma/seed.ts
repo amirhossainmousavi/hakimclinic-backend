@@ -18,7 +18,7 @@ async function main() {
     },
   });
 
-  // مدیر (mosavi): password_hash اولیه = هش شماره موبایل (طبق معماری، ورود بدون پسورد)
+  // Manager (mosavi): initial password_hash = hash of the phone number (per architecture, passwordless login)
   const nationalCode = '4421100773';
   const phone = '09369007054';
   const passwordHash = await bcrypt.hash(phone, 10);

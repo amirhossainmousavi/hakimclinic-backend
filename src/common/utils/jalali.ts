@@ -1,4 +1,4 @@
-/** تبدیل تقویم شمسی/میلادی — الگوریتم jalaali (بدون وابستگی). همهٔ محاسبات روی «روز مطلق از ۱۹۷۰» خطی است. */
+/** Solar/Gregorian calendar conversion — jalaali algorithm (no dependencies). All calculations are linear on the "absolute day since 1970". */
 
 const DAY_MS = 86400000;
 const div = (a: number, b: number): number => Math.floor(a / b);
@@ -56,7 +56,7 @@ function d2j(dn: number): { jy: number; jm: number; jd: number } {
   return { jy, jm: 7 + div(k, 30), jd: mod(k, 30) + 1 };
 }
 
-/** ماه ۰-پایه (۰=فروردین) */
+/** 0-based month (0 = Farvardin) */
 export interface JalaliDate {
   year: number;
   month: number;
@@ -88,13 +88,13 @@ export function shiftMonth(year: number, month: number, delta: number): { year: 
   return { year: y, month: m };
 }
 
-/** کلید روز شمسی «ماه/روز» (ماه ۱-پایه) */
+/** Solar day key "month/day" (1-based month) */
 export function jalaliDayKey(date: Date): string {
   const j = toJalali(date);
   return `${j.month + 1}/${j.day}`;
 }
 
-/** طول ماه شمسی (ماه ۰-پایه) */
+/** Solar month length (0-based month) */
 export function getJalaliMonthLength(year: number, month: number): number {
   if (month < 6) return 31;
   if (month < 11) return 30;

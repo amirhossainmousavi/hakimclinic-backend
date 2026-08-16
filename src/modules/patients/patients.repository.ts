@@ -8,7 +8,7 @@ export class PatientsRepository {
     const status: PatientStatus =
       data.admissionType === 'free' ? 'admitted' : 'pending_insurance_approval';
 
-    // اعتبارسنجی خدمت‌ها و ثبت همزمان با بیمار (اتمیک)
+    // Validate services and register them together with the patient (atomic)
     let serviceRows: Array<{ clinicId: string; serviceId: string; serviceDate: Date; unitPrice: number }> | undefined;
     if (data.services && data.services.length > 0) {
       const services = await prisma.service.findMany({

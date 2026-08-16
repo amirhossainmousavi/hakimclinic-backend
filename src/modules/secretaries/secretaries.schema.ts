@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { SecretaryPermissionKey } from '@prisma/client';
 
-/** دسترسی‌های پیش‌فرض هر منشی — اگر مدیر چیز دیگری مشخص نکند همین‌ها اعمال می‌شوند */
+/** Default permissions for each secretary — applied unless the manager specifies otherwise */
 export const DEFAULT_SECRETARY_PERMISSIONS: SecretaryPermissionKey[] = [
   SecretaryPermissionKey.dashboard,
   SecretaryPermissionKey.patients,

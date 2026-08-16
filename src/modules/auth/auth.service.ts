@@ -13,7 +13,7 @@ export class AuthService {
       throw new UnauthorizedError('کاربر با این مشخصات یافت نشد یا غیرفعال است');
     }
 
-    // اگر password ارسال نشود، طبق معماری هش شماره موبایل به‌عنوان پسورد پیش‌فرض چک می‌شود
+    // If password is not provided, the phone number hash is checked as the default password per architecture
     const passwordToCheck = input.password ?? user.phone;
     const isPasswordValid = await bcrypt.compare(passwordToCheck, user.passwordHash);
     if (!isPasswordValid) {

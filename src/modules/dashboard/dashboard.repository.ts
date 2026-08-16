@@ -8,10 +8,10 @@ export class DashboardRepository {
     const startOfTomorrow = new Date(endOfToday.getTime());
     const endOfTomorrow = new Date(startOfTomorrow.getTime() + 86400000);
 
-    // ۳۰ روز اخیر برای نمودار درآمد (همان پنجره ای که فرانت مقایسه می‌کند)
+    // Last 30 days for the revenue chart (the same window the frontend compares)
     const dayMs = 86400000;
     const todayOffset = Math.floor((startOfToday.getTime() - Date.UTC(now.getUTCFullYear(), 0, 1)) / dayMs);
-    const endIdx = todayOffset + 1; // پایان امروز
+    const endIdx = todayOffset + 1; // end of today
     const startIdx = endIdx - 30;
 
     const [
@@ -49,7 +49,7 @@ export class DashboardRepository {
       }),
     ]);
 
-    // درآمد روزانه برای ۳۰ روز اخیر — تاریخ ISO YYYY-MM-DD (فرانت با new Date(``T00:00:00``) پارس می‌کند)
+    // Daily revenue for the last 30 days — ISO YYYY-MM-DD date (frontend parses with new Date(``T00:00:00``))
     const buckets = new Map<string, number>();
     for (let i = startIdx; i < endIdx; i++) {
       const d = new Date(Date.UTC(now.getUTCFullYear(), 0, 1) + i * dayMs);
@@ -65,7 +65,7 @@ export class DashboardRepository {
 
     const revenue30d = Array.from(buckets.entries()).map(([date, total]) => ({ date, total }));
 
-    // درصد رشد نسبت به ۳۰ روز قبل
+    // Growth percentage compared to the previous 30 days
     const prevRows = await prisma.invoice.findMany({
       where: {
         clinicId,
@@ -80,7 +80,7 @@ export class DashboardRepository {
     const revenueGrowthPercent =
       previousTotal > 0 ? ((currentTotal - previousTotal) / previousTotal) * 100 : null;
 
-    // هشدارها: بیماران «در انتظار تاییدیه بیمه» که بیش از ۲ روز از پذیرش شان گذشته
+    // Alerts: patients "waiting for insurance approval" admitted more than 2 days ago
     const overdue = await prisma.patient.count({
       where: {
         clinicId,

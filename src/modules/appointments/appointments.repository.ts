@@ -69,7 +69,7 @@ export class AppointmentsRepository {
     });
     if (!existing) return null;
 
-    // فیلدهای اطلاعات بیمار که به رکورد Patient متصل هم اعمال می‌شوند
+    // Patient info fields that are also applied to the linked Patient record
     const patientFields = ['fullName', 'nationalCode', 'phone', 'birthDate', 'admissionPlaceId'] as const;
     const patientUpdate: Record<string, unknown> = {};
     for (const field of patientFields) {

@@ -29,7 +29,7 @@ export const getAppointmentsQuerySchema = z
   .object({
     dateFrom: z.string().transform((val) => new Date(val)).optional(),
     dateTo: z.string().transform((val) => new Date(val)).optional(),
-    // فرانت از from/to/search/page/limit استفاده می‌کند
+    // Frontend uses from/to/search/page/limit
     from: z.string().transform((val) => new Date(val)).optional(),
     to: z.string().transform((val) => new Date(val)).optional(),
     search: z.string().optional(),

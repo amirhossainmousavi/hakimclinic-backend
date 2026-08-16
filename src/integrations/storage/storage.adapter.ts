@@ -3,7 +3,7 @@ import path from 'node:path';
 import { env } from '../../config/env';
 
 /**
- * رابط ذخیره‌سازی فایل. دو پیاده‌سازی: local (توسعه) و s3 (همروش).
+ * File storage interface. Two implementations: local (development) and s3 (production).
  */
 export interface StorageAdapter {
   save(buf: Buffer, key: string, mime: string): Promise<string>;
@@ -32,13 +32,13 @@ class LocalStorageAdapter implements StorageAdapter {
     if (!url.startsWith('/uploads/')) return;
     const relative = url.replace(/^\/uploads\//, '');
     await fs.unlink(path.join(this.root, relative)).catch(() => {
-      /* فایل وجود ندارد — بی‌صدا نادیده بگیر */
+      /* File does not exist — silently ignore */
     });
   }
 }
 
-// پکیج aws-sdk به‌صورت lazy لود می‌شود تا وقتی STORAGE_DRIVER=local است
-// حتی نصب نباشد، ماژول بالا نیاید.
+// The aws-sdk package is lazy-loaded so that when STORAGE_DRIVER=local
+// it doesn't even need to be installed for the module to load.
 type S3ClientLike = {
   send: (cmd: any) => Promise<any>;
 };
@@ -91,7 +91,7 @@ class S3StorageAdapter implements StorageAdapter {
     if (!url.startsWith(marker)) return;
     const key = url.slice(marker.length);
     await client.send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: key })).catch(() => {
-      /* کلید وجود ندارد — بی‌صدا نادیده بگیر */
+      /* Key does not exist — silently ignore */
     });
   }
 }

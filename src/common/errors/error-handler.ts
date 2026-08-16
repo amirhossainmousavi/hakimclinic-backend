@@ -30,7 +30,7 @@ export function errorHandler(error: FastifyError | AppError | Error, request: Fa
     });
   }
 
-  // خطای نقض کلید خارجی (حذف رکوردی که به آن ارجاع داده شده)
+  // Foreign key violation error (deleting a record that is still referenced)
   const code = (error as any)?.code;
   if (code === 'P2003' || code === 'P2014') {
     request.log.error(error);
@@ -44,7 +44,7 @@ export function errorHandler(error: FastifyError | AppError | Error, request: Fa
     });
   }
 
-  // خطای نقض کلید یکتا (کدملی، شماره تلفن، کد خدمت و… تکراری ثبت شده)
+  // Unique key violation error (national code, phone number, service code, etc. already registered)
   if (code === 'P2002') {
     request.log.error(error);
     return reply.status(409).send({

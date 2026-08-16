@@ -1,7 +1,7 @@
 import { prisma } from '../../common/prisma/prisma.client';
 import { CreateInvoiceInput, GetInvoicesQuery } from './invoices.schema';
 
-// آیتم‌های تو در تو را برای فرانت flat می‌کنیم
+// Flatten nested items for the frontend
 function flattenInvoiceItems(items: any[]) {
   return items.map(({ service, tariff, ...rest }) => ({
     ...rest,
@@ -79,7 +79,7 @@ export class InvoicesRepository {
     };
   }
 
-  // محاسبه پیش‌فاکتور بدون ذخیره‌سازی — با enrich نام خدمت/تعرفه
+  // Compute pro-forma invoice without saving — enrich service/tariff names
   async computeProForma(clinicId: string, data: CreateInvoiceInput) {
     const items = data.items;
     const serviceIds = items.map((i) => i.serviceId);
@@ -119,7 +119,7 @@ export class InvoicesRepository {
     };
   }
 
-  // برای رندر PDF به داده‌های تو در تو (relation) کامل نیاز داریم
+  // For PDF rendering we need full nested (relation) data
   async findByIdForPdf(clinicId: string, id: string) {
     return prisma.invoice.findFirst({
       where: { id, clinicId, deletedAt: null },

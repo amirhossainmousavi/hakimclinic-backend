@@ -11,7 +11,7 @@ export async function authenticate(request: FastifyRequest) {
     throw new UnauthorizedError('توکن معتبر نیست یا منقضی شده است');
   }
 
-  // پر کردن scopes برای منشی‌ها از دیتابیس (مدیر محدودیت دسته ندارد)
+  // Fill scopes for secretaries from the database (manager has no place restrictions)
   const user = request.user as UserPayload;
   if (user.role !== 'manager') {
     const rows = await prisma.secretaryWorkplace.findMany({

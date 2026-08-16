@@ -2,12 +2,12 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * تولید PDF فاکتور با رندر HTML/CSS راست‌به‌چپ توسط Puppeteer.
- * فونت Vazirmatn به‌صورت base64 داخل تمپلیت embed می‌شود (نه CDN) تا
- * در PDF خروجی — حتی به‌صورت آفلاین — درست رندر شود.
+ * Generate an invoice PDF by rendering right-to-left HTML/CSS with Puppeteer.
+ * The Vazirmatn font is embedded into the template as base64 (not CDN) so that
+ * it renders correctly in the output PDF — even offline.
  */
 
-// --- فونت Vazirmatn (embed) ---
+// --- Vazirmatn font (embed) ---
 function loadFontBase64(weight: 400 | 700): string {
   const file = join(
     process.cwd(),
@@ -23,7 +23,7 @@ function loadFontBase64(weight: 400 | 700): string {
 const FONT_400 = loadFontBase64(400);
 const FONT_700 = loadFontBase64(700);
 
-// --- تاریخ شمسی (بدون وابستگی) ---
+// --- Solar date (no dependencies) ---
 const JALALI_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 const JALALI_BREAKS = [-61, 9, 38, 199, 426, 686, 756, 818, 1111, 1181, 1210, 1635, 2060, 2097, 2192, 2262, 2324, 2394, 2456, 3178];
 const div = (a: number, b: number) => Math.floor(a / b);
@@ -87,7 +87,7 @@ export function formatJalaliLong(date: Date): string {
   return `${day} ${JALALI_MONTHS[month - 1]} ${year}`;
 }
 
-// --- ابزار قالب‌بندی ---
+// --- Formatting helpers ---
 function formatPrice(n: number): string {
   return Math.round(n).toLocaleString('fa-IR');
 }
@@ -101,7 +101,7 @@ function esc(s: string | null | undefined): string {
     .replace(/"/g, '&quot;');
 }
 
-// --- نام فایل PDF (از اسم بیمار) ---
+// --- PDF filename (from patient name) ---
 export function buildPdfFilename(d: InvoicePdfData): { filename: string; filenameEncoded: string } {
   const safe = d.patientName.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim() || 'بیمار';
   const filename = `فاکتور-${safe}.pdf`;
@@ -109,7 +109,7 @@ export function buildPdfFilename(d: InvoicePdfData): { filename: string; filenam
   return { filename, filenameEncoded };
 }
 
-// --- داده موردنیاز برای رندر ---
+// --- Data required for rendering ---
 export interface InvoicePdfItem {
   code: string;
   description: string;
@@ -122,7 +122,7 @@ export interface InvoicePdfItem {
 export interface InvoicePdfData {
   invoiceNumber: string;
   fileNumber: string;
-  issueDate: string; // شمسی
+  issueDate: string; // solar
   invoiceType: 'final' | 'pro_forma';
   paymentTypeLabel: string;
   patientName: string;
@@ -141,7 +141,7 @@ export interface InvoicePdfData {
   notes: string | null;
 }
 
-// --- تمپلیت HTML ---
+// --- HTML template ---
 export function buildInvoiceHtml(d: InvoicePdfData): string {
   const isProForma = d.invoiceType === 'pro_forma';
   const docTitle = isProForma ? 'پیش‌فاکتور' : 'فاکتور فروش';
@@ -171,8 +171,8 @@ export function buildInvoiceHtml(d: InvoicePdfData): string {
       </div>`
     : '';
 
-  // پیش‌پرداخت: finalTotal از قبل prepaidAmount را کم کرده است؛
-  // ردیف‌های پیش‌پرداخت شده (x) و باقی‌مانده (y = finalTotal) فقط برای نمایش.
+  // Prepayment: finalTotal already has prepaidAmount subtracted;
+  // prepaid rows (x) and remaining amount (y = finalTotal) are for display only.
   const prepaidRows =
     d.prepaidAmount > 0
       ? `<tr class="prepaid"><td class="k">پیش‌پرداخت شده</td><td class="v">${formatPrice(d.prepaidAmount)}</td></tr>
@@ -212,7 +212,7 @@ export function buildInvoiceHtml(d: InvoicePdfData): string {
     display: flex;
     flex-direction: column;
   }
-  /* ---------- رسمی: سربرگ (لوگو + خط دوبل) ---------- */
+  /* ---------- Official: letterhead (logo + double rule) ---------- */
   .letterhead {
     display: flex;
     justify-content: space-between;
@@ -254,7 +254,7 @@ export function buildInvoiceHtml(d: InvoicePdfData): string {
     margin-top: 2px;
   }
 
-  /* ---------- جدول اطلاعات ---------- */
+  /* ---------- Meta table ---------- */
   table.meta {
     width: 100%;
     border-collapse: collapse;
@@ -268,7 +268,7 @@ export function buildInvoiceHtml(d: InvoicePdfData): string {
   table.meta .k { color: #4b5563; font-size: 10px; }
   table.meta .v { font-weight: 600; color: #111827; }
 
-  /* ---------- جدول اقلام ---------- */
+  /* ---------- Items table ---------- */
   table.items { width: 100%; border-collapse: collapse; }
   table.items th {
     background: #1e3a8a;
@@ -291,7 +291,7 @@ export function buildInvoiceHtml(d: InvoicePdfData): string {
   .desc { max-width: 62mm; }
   .strong { font-weight: 700; }
 
-  /* ---------- جمع‌بندی ---------- */
+  /* ---------- Summary ---------- */
   .summary {
     width: 100%;
     border-collapse: collapse;
@@ -312,7 +312,7 @@ export function buildInvoiceHtml(d: InvoicePdfData): string {
     font-weight: 700;
   }
 
-  /* ---------- توضیحات (فقط پیش‌فاکتور) ---------- */
+  /* ---------- Notes (pro-forma only) ---------- */
   .notes {
     margin-top: 5mm;
     padding: 4mm 5mm;
@@ -337,7 +337,7 @@ export function buildInvoiceHtml(d: InvoicePdfData): string {
     color: #111827;
   }
 
-  /* ---------- امضاها و مهر ---------- */
+  /* ---------- Signatures and seal ---------- */
   .signatures {
     margin-top: auto;
     display: flex;
@@ -356,7 +356,7 @@ export function buildInvoiceHtml(d: InvoicePdfData): string {
   }
   .sign-box b { display: block; margin-bottom: 2mm; font-size: 11px; color: #111827; }
 
-  /* ---------- پاورقی ---------- */
+  /* ---------- Footer ---------- */
   .footer {
     margin-top: 4mm;
     padding-top: 2mm;
@@ -439,7 +439,7 @@ export function buildInvoiceHtml(d: InvoicePdfData): string {
 </html>`;
 }
 
-// --- Puppeteer (تزریق lazy) ---
+// --- Puppeteer (lazy injection) ---
 type PuppeteerLaunch = (opts?: Record<string, unknown>) => Promise<{ close: () => Promise<void>; newPage: () => Promise<any> }>;
 let puppeteerLaunch: PuppeteerLaunch | null = null;
 
@@ -454,15 +454,15 @@ const COMMON_EXECUTABLE_PATHS = [
   '/opt/google/chrome/chrome',
 ];
 
-// در این پروژه دانلود Chromium پکیج puppeteer پشتیبانی نشد (403 از سرور دانلود)؛
-// بنابراین مسیر مرورگر سیستم (Edge/Chrome) از env یا جست‌وجوی مسیرهای رایج پیدا می‌شود.
+// Downloading Chromium via the puppeteer package was not supported in this project (403 from the download server);
+// so the system browser path (Edge/Chrome) is resolved from env or by searching common paths.
 function resolveExecutablePath(): string | undefined {
   if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
   for (const p of COMMON_EXECUTABLE_PATHS) {
     try {
       if (readFileSync(p)) return p;
     } catch {
-      /* وجود ندارد */
+      /* Not present */
     }
   }
   return undefined;
@@ -501,8 +501,8 @@ export async function renderPdf(html: string): Promise<Buffer> {
 }
 
 /**
- * کل داده فاکتور را از خروجی Prisma به ساختار قابل رندر تبدیل می‌کند.
- * (نوع خروجی عمداً loose است تا با خروجی Prisma همراه شود.)
+ * Converts the entire invoice data from the Prisma output into a renderable structure.
+ * (The output type is intentionally loose to keep in sync with the Prisma output.)
  */
 export function mapInvoiceToPdf(invoice: any): InvoicePdfData {
   const items: InvoicePdfItem[] = (invoice.items ?? []).map((item: any) => {
@@ -527,7 +527,7 @@ export function mapInvoiceToPdf(invoice: any): InvoicePdfData {
   const subtotal = items.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
   const itemDiscounts = items.reduce((s, it) => s + it.discountAmount, 0);
   const invoiceDiscount = Number(invoice.discountTotal ?? 0);
-  // جمع تخفیف واقعی = تخفیف ردیف‌ها + تخفیف هدر
+  // Actual total discount = line discounts + header discount
   const discountTotal = itemDiscounts + invoiceDiscount;
   const finalTotal = Number(invoice.totalAmount ?? 0);
   const taxTotal = 0;

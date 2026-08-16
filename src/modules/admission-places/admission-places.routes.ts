@@ -7,10 +7,10 @@ export async function admissionPlacesRoutes(app: FastifyInstance) {
 
   app.addHook('onRequest', authenticate);
 
-  // لیست برای همه نقش‌ها (منشی فقط محل‌های دسترس خودش را می‌بیند)
+  // Listing for all roles (secretary only sees their own accessible places)
   app.get('/', controller.list);
 
-  // عملیات تغییر فقط برای مدیر
+  // Mutations are manager-only
   app.post('/', { preHandler: requireRole(['manager']) }, controller.create);
   app.get('/:id', { preHandler: requireRole(['manager']) }, controller.getById);
   app.patch('/:id', { preHandler: requireRole(['manager']) }, controller.update);

@@ -2,7 +2,7 @@ import { prisma } from '../../common/prisma/prisma.client';
 import { CreateNotificationInput } from './notifications.schema';
 
 export class NotificationsRepository {
-  // لیست اطلاعیه‌ها برای یک کاربر — read از روی رکورد recipient خودش
+  // List notifications for a user — read from their own recipient record
   async findAll(clinicId: string, userId: string) {
     const notifications = await prisma.notification.findMany({
       where: { clinicId },
@@ -25,7 +25,7 @@ export class NotificationsRepository {
     }));
   }
 
-  // ساخت اطلاعیه + رکورد recipient برای همه کاربران کلینیک (اتمیک)
+  // Create notification + recipient record for all clinic users (atomic)
   async create(clinicId: string, userId: string, data: CreateNotificationInput) {
     const users = await prisma.user.findMany({
       where: { clinicId, isActive: true },
@@ -46,7 +46,7 @@ export class NotificationsRepository {
         data: users.map((u) => ({
           notificationId: notification.id,
           userId: u.id,
-          // فرستنده خودش خوانده فرض می‌شود
+          // The sender's own copy is assumed read
           readAt: u.id === userId ? new Date() : null,
         })),
       });

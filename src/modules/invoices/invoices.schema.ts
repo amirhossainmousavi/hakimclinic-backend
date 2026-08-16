@@ -28,7 +28,7 @@ export const getInvoicesQuerySchema = z
     search: z.string().optional(),
     patientId: z.string().uuid().optional(),
     type: z.nativeEnum(InvoiceType).optional(),
-    // فرانت کلید invoiceType می‌فرستد (جایگزین type)
+    // Frontend sends the invoiceType key (replacing type)
     invoiceType: z.nativeEnum(InvoiceType).optional(),
     page: z.string().default('1').transform((v) => parseInt(v, 10)),
     limit: z.string().default('10').transform((v) => parseInt(v, 10)),

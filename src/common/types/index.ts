@@ -5,9 +5,9 @@ export interface UserPayload {
   userId: string;
   clinicId: string;
   role: Role;
-  /** آیدی محل‌های پذیرش که منشی به آن‌ها دسترسی دارد (برای manager undefined است) */
+  /** IDs of admission places the secretary has access to (undefined for manager) */
   scopes?: string[];
-  /** دسترسی‌های پنل که منشی می‌تواند استفاده کند (برای manager undefined است) */
+  /** Panel permissions the secretary can use (undefined for manager) */
   permissions?: SecretaryPermissionKey[];
 }
 

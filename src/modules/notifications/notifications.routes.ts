@@ -7,7 +7,7 @@ export async function notificationsRoutes(app: FastifyInstance) {
 
   app.addHook('onRequest', authenticate);
 
-  // همه اعضا می‌توانند اطلاعیه‌ها را ببینند؛ فقط مدیر می‌تواند بسازد
+  // All members can view notifications; only the manager can create them
   app.get('/', controller.list);
   app.post('/', { preHandler: requireRole(['manager']) }, controller.create);
 }

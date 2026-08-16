@@ -14,7 +14,7 @@ import {
   toJalali,
 } from '../../common/utils/jalali';
 
-/** مرزهای ماه شمسی جاری و ماه قبل برای نمودار دوخطی */
+/** Bounds of the current and previous solar months for the two-line chart */
 function jalaliMonthBounds(now: Date): {
   currentStart: Date;
   currentEnd: Date;
@@ -62,7 +62,7 @@ export class ExpensesRepository {
     return prisma.companyInvoice.create({
       data: {
         ...data,
-        // فرانت این فیلدها را اختیاری می‌فرستد؛ دیتابیس NOT NULL است
+        // Frontend sends these fields optionally; the database is NOT NULL
         partName: data.partName ?? '',
         quantity: data.quantity ?? 1,
         unitAmount: data.unitAmount ?? 0,
@@ -106,7 +106,7 @@ export class ExpensesRepository {
     return prisma.companyInvoice.findMany({ where, orderBy: { invoiceDate: 'desc' } });
   }
 
-  // لیست یکپارچه: هزینه‌های روزانه + فاکتورهای خرید با دیسکریمیناتور type
+  // Unified list: daily expenses + purchase invoices with a type discriminator
   async getUnifiedExpenses(clinicId: string, query: GetUnifiedExpensesQuery, scopes?: string[]) {
     const { search, type, from, to, admissionPlaceId, page, limit } = query;
     const skip = (page - 1) * limit;
@@ -161,7 +161,7 @@ export class ExpensesRepository {
       ...company.map((c) => ({ ...c, type: 'company' as const })),
     ];
 
-    // مرتب‌سازی یکپارچه: جدیدترین expenseDate/invoiceDate اول
+    // Unified sorting: newest expenseDate/invoiceDate first
     const sorted = all.sort((a, b) => {
       const ta = a.expenseDate ?? a.invoiceDate;
       const tb = b.expenseDate ?? b.invoiceDate;
@@ -182,7 +182,7 @@ export class ExpensesRepository {
     };
   }
 
-  // مقایسه ماهانه هزینه‌های روزانه در برابر فاکتورهای خرید (۶ ماه اخیر شمسی)
+  // Monthly comparison of daily expenses vs. purchase invoices (last 6 solar months)
   async getMonthlyComparison(clinicId: string) {
     const now = new Date();
     const months: { month: string; start: Date; end: Date }[] = [];

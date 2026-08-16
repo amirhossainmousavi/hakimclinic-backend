@@ -12,7 +12,7 @@ export async function expensesRoutes(app: FastifyInstance) {
   app.get('/daily', controller.listDaily);
   app.get('/company', controller.listCompany);
 
-  // لیست یکپارچه و مقایسه ماهانه
+  // Unified list and monthly comparison
   app.get('/monthly-comparison', { preHandler: requireRole(['manager']) }, controller.monthlyComparison);
   app.get('/monthly-chart', { preHandler: requireRole(['manager']) }, controller.monthlyChart);
   app.get('/', controller.listUnified);

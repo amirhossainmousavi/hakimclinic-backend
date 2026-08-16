@@ -25,7 +25,7 @@ export const getExpensesQuerySchema = z.object({
   admissionPlaceId: z.string().uuid().optional(),
 });
 
-// پارامترهای لیست یکپارچه /expenses (مطابق فرانت)
+// Query params for the unified /expenses list (matching the frontend)
 export const getUnifiedExpensesQuerySchema = z
   .object({
     search: z.string().optional(),
