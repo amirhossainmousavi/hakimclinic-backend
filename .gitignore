@@ -1,0 +1,31 @@
+# ==== Dependencies ====
+node_modules/
+
+# ==== Build ====
+dist/
+
+# ==== Environment & secrets ====
+.env
+.env.local
+.env.*.local
+
+# ==== Runtime data ====
+uploads/
+server.log
+logs/
+*.log
+npm-debug.log*
+
+# ==== Temp/scratch ====
+*.tmp
+*.bak
+tsconfig.bak.json
+
+# ==== OS ====
+.DS_Store
+Thumbs.db
+
+# ==== Editor ====
+.idea/
+.vscode/
+*.swp

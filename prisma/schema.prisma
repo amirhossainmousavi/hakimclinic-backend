@@ -1,0 +1,497 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  manager
+  secretary
+}
+
+enum SecretaryPermissionKey {
+  dashboard
+  patients
+  appointments
+  invoices
+  expenses
+}
+
+enum AdmissionType {
+  free
+  insured
+}
+
+enum AdmissionPlaceType {
+  free_only
+  insured_only
+  both
+}
+
+enum PatientStatus {
+  admitted
+  pending_insurance_approval
+  in_production
+  ready_for_delivery
+  delivered
+}
+
+enum AppointmentStatus {
+  scheduled
+  postponed
+  cancelled
+  done
+}
+
+enum PatientFileType {
+  image
+  video
+}
+
+enum ServiceType {
+  orthosis
+  prosthesis
+}
+
+enum InvoiceType {
+  final
+  pro_forma
+}
+
+enum PaymentType {
+  card_to_card
+  pos
+  bank_transfer
+}
+
+model Clinic {
+  id          String   @id @default(uuid())
+  name        String
+  phone       String
+  address     String
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  users               User[]
+  patients            Patient[]
+  insurances          Insurance[]
+  appointments        Appointment[]
+  notifications       Notification[]
+  services            Service[]
+  patientServices     PatientService[]
+  tariffs             Tariff[]
+  invoices            Invoice[]
+  dailyExpenses       DailyExpense[]
+  companyInvoices     CompanyInvoice[]
+  smsTemplates        SmsTemplate[]
+  admissionPlaces     AdmissionPlace[]
+
+  @@map("clinics")
+}
+
+model User {
+  id               String          @id @default(uuid())
+  clinicId         String          @map("clinic_id")
+  nationalCode     String          @map("national_code")
+  phone            String
+  passwordHash     String          @map("password_hash")
+  fullName         String          @map("full_name")
+  avatarUrl        String?         @map("avatar_url")
+  role             Role            @default(secretary)
+  isActive         Boolean         @default(true) @map("is_active")
+  createdAt        DateTime        @default(now()) @map("created_at")
+
+  clinic           Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  secretaryScopes  SecretaryWorkplace[] @relation("SecretaryWorkplaceAssignment")
+  secretaryPermissions SecretaryPermission[]
+  admittedPatients Patient[]       @relation("AdmittedBy")
+  statusChanges    PatientStatusHistory[]
+  insuranceApprovals InsuranceApproval[]
+  appointments     Appointment[]
+  notifications    Notification[]
+  notificationRecipients NotificationRecipient[]
+  invoices         Invoice[]
+  dailyExpenses    DailyExpense[]
+  companyInvoices  CompanyInvoice[]
+  refreshTokens    RefreshToken[]
+
+  @@unique([clinicId, nationalCode])
+  @@map("users")
+}
+
+model Patient {
+  id                String            @id @default(uuid())
+  clinicId          String            @map("clinic_id")
+  nationalCode      String            @map("national_code")
+  fullName          String            @map("full_name")
+  phone             String
+  birthDate         DateTime?         @map("birth_date")
+  fileNumber        String            @map("file_number")
+  admissionPlaceId  String?           @map("admission_place_id")
+  admissionType     AdmissionType     @map("admission_type")
+  insuranceId       String?           @map("insurance_id")
+  status            PatientStatus     @default(pending_insurance_approval)
+  suggestedDoctor   String?           @map("suggested_doctor")
+  description       String?           @map("description")
+  admittedByUserId  String            @map("admitted_by_user_id")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  deletedAt         DateTime?         @map("deleted_at")
+
+  clinic            Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  admissionPlace    AdmissionPlace?   @relation(fields: [admissionPlaceId], references: [id])
+  insurance         Insurance?        @relation(fields: [insuranceId], references: [id])
+  admittedBy        User              @relation("AdmittedBy", fields: [admittedByUserId], references: [id])
+  statusHistory     PatientStatusHistory[]
+  insuranceApprovals InsuranceApproval[]
+  invoices          Invoice[]
+  appointments      Appointment[]
+  files             PatientFile[]
+  patientServices   PatientService[]
+
+  @@index([clinicId, nationalCode])
+  @@index([clinicId, admissionPlaceId])
+  @@map("patients")
+}
+
+model PatientFile {
+  id        String         @id @default(uuid())
+  clinicId  String         @map("clinic_id")
+  patientId String         @map("patient_id")
+  type      PatientFileType
+  mimeType  String         @map("mime_type")
+  fileName  String         @map("file_name")
+  fileSize  Int            @map("file_size")
+  url       String
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  patient   Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@map("patient_files")
+}
+
+model PatientService {
+  id          String   @id @default(uuid())
+  clinicId    String   @map("clinic_id")
+  patientId   String   @map("patient_id")
+  serviceId   String   @map("service_id")
+  serviceDate DateTime @map("service_date")
+  unitPrice   Float    @map("unit_price")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, serviceDate])
+  @@map("patient_services")
+}
+
+model PatientStatusHistory {
+  id               String        @id @default(uuid())
+  patientId        String        @map("patient_id")
+  fromStatus       PatientStatus @map("from_status")
+  toStatus         PatientStatus @map("to_status")
+  changedByUserId  String        @map("changed_by_user_id")
+  changedAt        DateTime      @default(now()) @map("changed_at")
+
+  patient          Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  changedBy        User          @relation(fields: [changedByUserId], references: [id])
+
+  @@map("patient_status_history")
+}
+
+model InsuranceApproval {
+  id               String    @id @default(uuid())
+  patientId        String    @map("patient_id")
+  receiptImageUrl  String    @map("receipt_image_url")
+  approvalFileUrl  String?   @map("approval_file_url")
+  approvedAt       DateTime? @map("approved_at")
+  approvedByUserId String?   @map("approved_by_user_id")
+
+  patient          Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  approvedBy       User?     @relation(fields: [approvedByUserId], references: [id])
+
+  @@map("insurance_approvals")
+}
+
+model Insurance {
+  id         String   @id @default(uuid())
+  clinicId   String   @map("clinic_id")
+  name       String
+  isApproved Boolean  @default(true) @map("is_approved")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  clinic     Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patients   Patient[]
+  admissionPlaces AdmissionPlaceInsurance[]
+
+  @@map("insurances")
+}
+
+model Appointment {
+  id             String            @id @default(uuid())
+  clinicId       String            @map("clinic_id")
+  patientId      String?           @map("patient_id")
+  fullName       String            @map("full_name")
+  nationalCode   String            @map("national_code")
+  phone          String
+  birthDate      DateTime?         @map("birth_date")
+  admissionType  AdmissionType     @map("admission_type")
+  admissionPlaceId String?         @map("admission_place_id")
+  appointmentDate DateTime         @map("appointment_date")
+  appointmentTime String?          @map("appointment_time")
+  status         AppointmentStatus @default(scheduled)
+  createdByUserId String           @map("created_by_user_id")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  clinic         Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient        Patient?          @relation(fields: [patientId], references: [id])
+  admissionPlace AdmissionPlace?   @relation(fields: [admissionPlaceId], references: [id])
+  createdBy      User              @relation(fields: [createdByUserId], references: [id])
+
+  @@index([clinicId, appointmentDate])
+  @@map("appointments")
+}
+
+model Notification {
+  id              String          @id @default(uuid())
+  clinicId        String          @map("clinic_id")
+  message         String
+  createdByUserId String          @map("created_by_user_id")
+  admissionPlaceId String?        @map("admission_place_id")
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  clinic          Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  createdBy       User            @relation(fields: [createdByUserId], references: [id])
+  admissionPlace  AdmissionPlace? @relation(fields: [admissionPlaceId], references: [id])
+  recipients      NotificationRecipient[]
+
+  @@index([admissionPlaceId])
+  @@map("notifications")
+}
+
+model NotificationRecipient {
+  id             String    @id @default(uuid())
+  notificationId String    @map("notification_id")
+  userId         String    @map("user_id")
+  readAt         DateTime? @map("read_at")
+
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_recipients")
+}
+
+model Service {
+  id                String      @id @default(uuid())
+  clinicId          String      @map("clinic_id")
+  serviceType       ServiceType @map("service_type")
+  serviceName       String?     @map("service_name")
+  regionOrSection   String?     @map("region_or_section")
+  treatmentProcess  String?     @map("treatment_process")
+  serviceCode       String      @map("service_code")
+  price             Float
+  description       String?
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  clinic           Clinic      @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  invoiceItems     InvoiceItem[]
+  patientServices  PatientService[]
+
+  @@unique([clinicId, serviceCode])
+  @@map("services")
+}
+
+model Tariff {
+  id              String   @id @default(uuid())
+  clinicId        String   @map("clinic_id")
+  itemCode        String   @map("item_code")
+  itemDescription String   @map("item_description")
+  price           Float
+  description     String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  invoiceItems    InvoiceItem[]
+
+  @@unique([clinicId, itemCode])
+  @@map("tariffs")
+}
+
+model Invoice {
+  id              String      @id @default(uuid())
+  clinicId        String      @map("clinic_id")
+  patientId       String      @map("patient_id")
+  invoiceNumber   String      @map("invoice_number")
+  invoiceType     InvoiceType @map("invoice_type")
+  paymentType     PaymentType @map("payment_type")
+  totalAmount     Float       @map("total_amount")
+  discountTotal   Float       @default(0) @map("discount_total")
+  prepaidAmount   Float       @default(0) @map("prepaid_amount")
+  description     String?
+  serviceDate     DateTime?   @map("service_date")
+  iban            String?
+  ibanNote        String?     @map("iban_note")
+  pdfUrl          String?     @map("pdf_url")
+  createdByUserId String      @map("created_by_user_id")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  deletedAt       DateTime?   @map("deleted_at")
+
+  clinic          Clinic      @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient         Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  createdBy       User        @relation(fields: [createdByUserId], references: [id])
+  items           InvoiceItem[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id             String   @id @default(uuid())
+  invoiceId      String   @map("invoice_id")
+  serviceId      String   @map("service_id")
+  tariffId       String?  @map("tariff_id")
+  quantity       Int      @default(1)
+  unitPrice      Float    @map("unit_price")
+  discountAmount Float    @default(0) @map("discount_amount")
+  lineTotal      Float    @map("line_total")
+
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  service        Service  @relation(fields: [serviceId], references: [id])
+  tariff         Tariff?  @relation(fields: [tariffId], references: [id])
+
+  @@map("invoice_items")
+}
+
+model DailyExpense {
+  id                String          @id @default(uuid())
+  clinicId          String          @map("clinic_id")
+  admissionPlaceId  String?         @map("admission_place_id")
+  title             String
+  amount            Float
+  expenseDate       DateTime        @map("expense_date")
+  description       String?
+  createdByUserId   String          @map("created_by_user_id")
+  createdAt         DateTime        @default(now()) @map("created_at")
+
+  clinic            Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  admissionPlace    AdmissionPlace? @relation(fields: [admissionPlaceId], references: [id])
+  createdBy         User            @relation(fields: [createdByUserId], references: [id])
+
+  @@index([clinicId, admissionPlaceId])
+  @@map("daily_expenses")
+}
+
+model CompanyInvoice {
+  id              String   @id @default(uuid())
+  clinicId        String   @map("clinic_id")
+  title           String
+  companyName     String   @map("company_name")
+  amount          Float
+  invoiceDate     DateTime @map("invoice_date")
+  partName        String   @map("part_name")
+  quantity        Int      @default(1)
+  unitAmount      Float    @map("unit_amount")
+  description     String?
+  createdByUserId String   @map("created_by_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  createdBy       User     @relation(fields: [createdByUserId], references: [id])
+
+  @@map("company_invoices")
+}
+
+model SmsTemplate {
+  id                  String   @id @default(uuid())
+  clinicId            String   @map("clinic_id")
+  eventKey            String   @map("event_key")
+  patternCode         String   @map("pattern_code")
+  providerTemplateId  String?  @map("provider_template_id")
+  isActive            Boolean  @default(true) @map("is_active")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  clinic              Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, eventKey])
+  @@map("sms_templates")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model AdmissionPlace {
+  id           String             @id @default(uuid())
+  clinicId     String             @map("clinic_id")
+  name         String
+  address      String
+  description  String?
+  admissionType AdmissionPlaceType @map("admission_type")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+  deletedAt    DateTime?          @map("deleted_at")
+
+  clinic       Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  insurances   AdmissionPlaceInsurance[]
+  patients     Patient[]
+  appointments Appointment[]
+  scopes       SecretaryWorkplace[]
+  dailyExpenses DailyExpense[]
+  notifications Notification[]
+
+  @@index([clinicId])
+  @@map("admission_places")
+}
+
+model AdmissionPlaceInsurance {
+  id          String         @id @default(uuid())
+  placeId     String         @map("place_id")
+  insuranceId String         @map("insurance_id")
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  place       AdmissionPlace @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  insurance   Insurance      @relation(fields: [insuranceId], references: [id], onDelete: Cascade)
+
+  @@unique([placeId, insuranceId])
+  @@map("admission_place_insurances")
+}
+
+model SecretaryWorkplace {
+  id      String         @id @default(uuid())
+  userId  String         @map("user_id")
+  placeId String         @map("place_id")
+
+  place   AdmissionPlace @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  user    User           @relation("SecretaryWorkplaceAssignment", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, placeId])
+  @@map("secretary_workplaces")
+}
+
+model SecretaryPermission {
+  id        String                @id @default(uuid())
+  userId    String                @map("user_id")
+  permissionKey SecretaryPermissionKey @map("permission_key")
+  createdAt DateTime              @default(now()) @map("created_at")
+
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionKey])
+  @@map("secretary_permissions")
+}
