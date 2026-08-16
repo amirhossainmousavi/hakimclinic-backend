@@ -23,6 +23,11 @@ function loadFontBase64(weight: 400 | 700): string {
 const FONT_400 = loadFontBase64(400);
 const FONT_700 = loadFontBase64(700);
 
+// --- Clinic logo (embedded base64 so the PDF renders it offline) ---
+const LOGO_BASE64 = readFileSync(
+  join(process.cwd(), 'src', 'modules', 'invoices', 'assets', 'hakimclinic-logo.png')
+).toString('base64');
+
 // --- Solar date (no dependencies) ---
 const JALALI_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 const JALALI_BREAKS = [-61, 9, 38, 199, 426, 686, 756, 818, 1111, 1181, 1210, 1635, 2060, 2097, 2192, 2262, 2324, 2394, 2456, 3178];
@@ -221,16 +226,9 @@ export function buildInvoiceHtml(d: InvoicePdfData): string {
   }
   .clinic { display: flex; align-items: center; gap: 10px; }
   .logo {
-    width: 16mm;
-    height: 16mm;
-    border: 1.5px solid #1e3a8a;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    font-weight: 700;
-    color: #1e3a8a;
+    width: 34mm;
+    height: auto;
+    display: block;
   }
   .clinic .name { font-size: 17px; font-weight: 700; color: #1e3a8a; }
   .clinic .sub { font-size: 10px; color: #4b5563; margin-top: 2px; }
@@ -373,7 +371,7 @@ export function buildInvoiceHtml(d: InvoicePdfData): string {
   <div class="page">
     <div class="letterhead">
       <div class="clinic">
-        <div class="logo">⧫</div>
+        <img class="logo" src="data:image/png;base64,${LOGO_BASE64}" alt="${esc(d.clinicName)}" />
         <div>
           <div class="name">${esc(d.clinicName)}</div>
           <div class="sub">مرکز فنی‌ارتوپدی و ارائه خدمات تخصصی</div>
