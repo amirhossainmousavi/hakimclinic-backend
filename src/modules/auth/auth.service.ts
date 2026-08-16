@@ -1,4 +1,3 @@
-import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { AuthRepository } from './auth.repository';
 import { LoginInput } from './auth.schema';
@@ -11,13 +10,6 @@ export class AuthService {
     const user = await this.authRepo.findUserByNationalCodeAndPhone(input.nationalCode, input.phone);
     if (!user) {
       throw new UnauthorizedError('کاربر با این مشخصات یافت نشد یا غیرفعال است');
-    }
-
-    // If password is not provided, the phone number hash is checked as the default password per architecture
-    const passwordToCheck = input.password ?? user.phone;
-    const isPasswordValid = await bcrypt.compare(passwordToCheck, user.passwordHash);
-    if (!isPasswordValid) {
-      throw new UnauthorizedError('رمز عبور اشتباه است');
     }
 
     const scopes = user.secretaryScopes.map((s) => s.placeId);

@@ -96,7 +96,6 @@ model User {
   clinicId         String          @map("clinic_id")
   nationalCode     String          @map("national_code")
   phone            String
-  passwordHash     String          @map("password_hash")
   fullName         String          @map("full_name")
   avatarUrl        String?         @map("avatar_url")
   role             Role            @default(secretary)

@@ -1,5 +1,4 @@
 import 'dotenv/config';
-import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
@@ -18,10 +17,9 @@ async function main() {
     },
   });
 
-  // Manager (mosavi): initial password_hash = hash of the phone number (per architecture, passwordless login)
+  // Manager (mosavi): passwordless login (nationalCode + phone only)
   const nationalCode = '4433699731';
   const phone = '09124841284';
-  const passwordHash = await bcrypt.hash(phone, 10);
 
   await prisma.user.upsert({
     where: { clinicId_nationalCode: { clinicId: clinic.id, nationalCode } },
@@ -30,7 +28,6 @@ async function main() {
       clinicId: clinic.id,
       nationalCode,
       phone,
-      passwordHash,
       fullName: 'مدیر کلینیک',
       role: 'manager',
     },

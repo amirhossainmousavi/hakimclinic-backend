@@ -69,7 +69,7 @@ src/
 | مدل | نکته |
 |---|---|
 | `Clinic` | `id, name, phone, address, is_active` |
-| `User` | `national_code (unique per clinic), phone, password_hash, role [manager | secretary], is_active` |
+| `User` | `national_code (unique per clinic), phone, role [manager | secretary], is_active` |
 | `SecretaryWorkplace` | دسترسی هر منشی به محل‌های پذیرش (`user_id + place_id`) — جایگزین `user_patient_scopes` |
 | `SecretaryPermission` | دسترسی دستی به ماژول‌ها (`dashboard, patients, appointments, invoices, expenses`) |
 | `AdmissionPlace` | محل پذیرش با `admission_type [free_only | insured_only | both]` |
@@ -96,8 +96,7 @@ src/
 
 ## ۴. احراز هویت و کنترل دسترسی
 
-- **ورود:** `POST /api/v1/auth/login` با `national_code` + `phone`.
-- **پسورد:** `password_hash` در جدول `users`؛ مقدار اولیه هش شماره موبایل است (`bcrypt.hash(phone, 10)`). در ورود، اگر پسورد صریحی ارسال نشود، از شماره موبایل به‌عنوان پسورد استفاده می‌شود (`password ?? user.phone`) — سازگاری با کاربران موجود.
+- **ورود:** `POST /api/v1/auth/login` با `national_code` + `phone` — بدون رمز عبور. سیستم فقط روی سرور کلینیک اجرا می‌شود و فقط کارکنان خود کلینیک به آن دسترسی دارند؛ در نتیجه احراز هویت صرفاً با کدملی و شماره موبایل انجام می‌شود (ستون `password_hash` از جدول `users` حذف شده است).
 - **توکن:** access token کوتاه‌عمر (پیش‌فرض ۱۵ دقیقه) + refresh token بلندعمر (پیش‌فرض ۷ روز) که هش‌شده در `refresh_tokens` ذخیره و قابل ابطال است. لاگ‌اوت توکن refresh را revoke می‌کند و refresh بعد از لاگ‌اوت با 401 رد می‌شود.
 - **RBAC:** میدلور `requireRole([...])` روی route ها؛ نقش‌ها `manager` و `secretary`.
 - **Tenant & Scope:** میدلور `authenticate` توکن را verify و `clinic_id` و `role` را به request context اضافه می‌کند. برای منشی‌ها، دسترسی به بیماران از طریق `SecretaryWorkplace` محدود می‌شود — عملیات‌های وضعیت بیمار، تاییدیه بیمه، الصاق/حذف خدمت و آپلود/حذف فایل، scope محل پذیرش را چک می‌کنند.

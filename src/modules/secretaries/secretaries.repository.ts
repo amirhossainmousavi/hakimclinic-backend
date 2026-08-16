@@ -1,5 +1,4 @@
 import { prisma } from '../../common/prisma/prisma.client';
-import bcrypt from 'bcryptjs';
 import {
   CreateSecretaryInput,
   DEFAULT_SECRETARY_PERMISSIONS,
@@ -22,7 +21,6 @@ export class SecretariesRepository {
     if (existing) {
       throw new ConflictError('این کدملی قبلاً برای کاربر دیگری ثبت شده است', 'DUPLICATE_NATIONAL_CODE');
     }
-    const passwordHash = await bcrypt.hash(data.phone, 10); // Initial password is phone
     const permissions = data.permissions ?? DEFAULT_SECRETARY_PERMISSIONS;
     return prisma.user.create({
       data: {
@@ -30,7 +28,6 @@ export class SecretariesRepository {
         nationalCode: data.nationalCode,
         phone: data.phone,
         clinicId,
-        passwordHash,
         role: 'secretary',
         secretaryScopes: data.workplaceIds?.length
           ? { create: data.workplaceIds.map((placeId) => ({ placeId })) }

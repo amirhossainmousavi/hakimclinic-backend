@@ -3,7 +3,6 @@ import { z } from 'zod';
 export const loginSchema = z.object({
   nationalCode: z.string().min(1, 'کدملی الزامی است'),
   phone: z.string().min(1, 'شماره تماس الزامی است'),
-  password: z.string().optional(),
 });
 
 export const refreshTokenSchema = z.object({
