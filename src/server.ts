@@ -4,7 +4,9 @@ import jwt from '@fastify/jwt';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import path from 'node:path';
+import Redis from 'ioredis';
 import { env } from './config/env';
+import { prisma } from './common/prisma/prisma.client';
 import { errorHandler } from './common/errors/error-handler';
 import { authRoutes } from './modules/auth/auth.routes';
 import { patientsRoutes } from './modules/patients/patients.routes';
@@ -68,8 +70,57 @@ async function bootstrap() {
   const uploadsDir = path.resolve(process.cwd(), env.UPLOAD_DIR);
   await app.register(fastifyStatic, { root: uploadsDir, prefix: '/uploads/' });
 
-  // Health check
-  app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
+  // Health check (backend + database + redis)
+  app.get('/health', async (request, reply) => {
+    const checks: Record<string, 'ok' | 'error'> = {};
+    let healthy = true;
+
+    // Database
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      checks.database = 'ok';
+    } catch {
+      checks.database = 'error';
+      healthy = false;
+    }
+
+    // Redis (probe only; used by BullMQ queues in the future)
+    let redis: Redis | null = null;
+    try {
+      redis = new Redis({
+        host: env.REDIS_HOST,
+        port: env.REDIS_PORT,
+        password: env.REDIS_PASSWORD || undefined,
+        lazyConnect: true,
+        maxRetriesPerRequest: 1,
+        connectTimeout: 2000,
+      });
+      await redis.connect();
+      const pong = await redis.ping();
+      checks.redis = pong === 'PONG' ? 'ok' : 'error';
+      if (pong !== 'PONG') healthy = false;
+    } catch {
+      checks.redis = 'error';
+      healthy = false;
+    } finally {
+      if (redis) {
+        try {
+          redis.disconnect();
+        } catch {
+          /* noop */
+        }
+      }
+    }
+
+    if (!healthy) {
+      return reply.code(503).send({
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        checks,
+      });
+    }
+    return { status: 'ok', timestamp: new Date().toISOString(), checks };
+  });
 
   // API Routes v1
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
