@@ -66,23 +66,23 @@ async function main() {
   for (const s of services) {
     await prisma.service.upsert({
       where: {
-        clinic_id_service_code: { clinic_id: clinicId, service_code: s.service_code },
+        clinicId_serviceCode: { clinicId, serviceCode: s.service_code },
       },
       update: {
-        service_type: s.service_type,
-        service_name: s.service_name ?? null,
-        region_or_section: s.region_or_section ?? null,
-        treatment_process: s.treatment_process ?? null,
+        serviceType: s.service_type,
+        serviceName: s.service_name ?? null,
+        regionOrSection: s.region_or_section ?? null,
+        treatmentProcess: s.treatment_process ?? null,
         price: s.price,
         description: s.description ?? null,
       },
       create: {
-        clinic_id: clinicId,
-        service_type: s.service_type,
-        service_code: s.service_code,
-        service_name: s.service_name ?? null,
-        region_or_section: s.region_or_section ?? null,
-        treatment_process: s.treatment_process ?? null,
+        clinicId,
+        serviceType: s.service_type,
+        serviceCode: s.service_code,
+        serviceName: s.service_name ?? null,
+        regionOrSection: s.region_or_section ?? null,
+        treatmentProcess: s.treatment_process ?? null,
         price: s.price,
         description: s.description ?? null,
       },
@@ -97,17 +97,17 @@ async function main() {
   for (const t of tariffs) {
     await prisma.tariff.upsert({
       where: {
-        clinic_id_item_code: { clinic_id: clinicId, item_code: t.item_code },
+        clinicId_itemCode: { clinicId, itemCode: t.item_code },
       },
       update: {
-        item_description: t.item_description,
+        itemDescription: t.item_description,
         price: t.price,
         description: t.description ?? null,
       },
       create: {
-        clinic_id: clinicId,
-        item_code: t.item_code,
-        item_description: t.item_description,
+        clinicId,
+        itemCode: t.item_code,
+        itemDescription: t.item_description,
         price: t.price,
         description: t.description ?? null,
       },
