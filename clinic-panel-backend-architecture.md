@@ -72,9 +72,9 @@ src/
 | `User` | `national_code (unique per clinic), phone, role [manager | secretary], is_active` |
 | `SecretaryWorkplace` | دسترسی هر منشی به محل‌های پذیرش (`user_id + place_id`) — جایگزین `user_patient_scopes` |
 | `SecretaryPermission` | دسترسی دستی به ماژول‌ها (`dashboard, patients, appointments, invoices, expenses`) |
-| `AdmissionPlace` | محل پذیرش با `admission_type [free_only | insured_only | both]` |
+| `AdmissionPlace` | محل پذیرش با `admission_type [free_only | insured_only | both]`، تلفن اصلی `phone` و فهرست شماره‌های تماس `center_numbers` (آرایه) |
 | `AdmissionPlaceInsurance` | رابطه محل×بیمه‌ای که آنجا پذیرش می‌شود |
-| `Patient` | `national_code, full_name, phone, birth_date, file_number, admission_type [free | insured], insurance_id?, status, suggested_doctor?, description?, admitted_by_user_id` — ایندکس ترکیبی `(clinic_id, national_code)` و `(clinic_id, admission_place_id)` |
+| `Patient` | `national_code, full_name, phone, birth_date, file_number, custom_file_number, admission_type [free | insured], insurance_id?, status, suggested_doctor?, description?, admitted_by_user_id` — ایندکس ترکیبی `(clinic_id, national_code)`، یکتایی `(clinic_id, custom_file_number)` و ایندکس `(clinic_id, admission_place_id)` |
 | `PatientStatusHistory` | تاریخچه تغییر وضعیت (`from_status → to_status, changed_by_user_id`) |
 | `PatientFile` | فایل‌های پرونده بیمار (`type [image | video], url, mime_type, file_size`) |
 | `PatientService` | خدمات ثبت‌شده برای بیمار (`service_id, service_date, unit_price`) |
@@ -82,9 +82,9 @@ src/
 | `Insurance` | بیمه‌های طرف قرارداد |
 | `Appointment` | نوبت‌دهی (`appointment_date, appointment_time?, status [scheduled | postponed | cancelled | done]`) — ایندکس `(clinic_id, appointment_date)` |
 | `Notification` | اطلاعیه داخلی + `NotificationRecipient` |
-| `Service` | خدمات: `service_type [orthosis | prosthesis], service_name?, region_or_section?, treatment_process?, service_code (unique per clinic), price` |
+| `Service` | خدمات: `service_type [orthosis | prosthesis], service_name (الزامی), region_or_section?, treatment_process? (باقی‌مانده از نسخه قدیم), service_code (unique per clinic), price` — نام نمایشی از `service_name` خوانده می‌شود (در غیابش `service_code`) |
 | `Tariff` | تعرفه قطعات: `item_code (unique per clinic), item_description, price` |
-| `Invoice` | `invoice_number, invoice_type [final | pro_forma], payment_type [card_to_card | pos | bank_transfer], total_amount, discount_total, prepaid_amount, iban?, pdf_url?` |
+| `Invoice` | `invoice_number, invoice_type [final | pro_forma], payment_type [card_to_card | pos | bank_transfer], total_amount, discount_total, prepaid_amount, iban?, pdf_url?` + snapshot محل پذیرش `admission_place_name, admission_place_address, admission_place_phone, admission_place_center_numbers` (برای فوتر PDF) |
 | `InvoiceItem` | سطر فاکتور: `service_id, tariff_id?, quantity, unit_price, discount_amount, line_total` |
 | `DailyExpense` / `CompanyInvoice` | هزینه‌ها |
 | `SmsTemplate` | پترن پیامک (`event_key (unique per clinic), pattern_code`) |
@@ -150,6 +150,8 @@ src/
 | tariffs | همانند services |
 | reports | `GET /reports/revenue`, export |
 | expenses | `GET /expenses`, `POST /expenses/daily`, `POST /expenses/company`, monthly-comparison |
+
+**فاکتور و PDF:** هنگام ساخت فاکتور، نام/آدرس/تلفن‌های محل پذیرش به‌صورت snapshot در خود فاکتور ذخیره می‌شود تا PDF حتی بعد از ویرایش محل، درست بماند. فوتر PDF شامل اطلاعات مرکز درمانی/محل پذیرش (نام، آدرس، شماره‌های تماس) است — بدون عنوان «مرکز درمانی». نام هر ردیف فاکتور از `service_name` سرویس خوانده می‌شود (در غیابش `service_code`).
 
 ---
 
