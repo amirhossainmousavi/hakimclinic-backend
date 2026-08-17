@@ -1,12 +1,14 @@
 /**
- * اسکریپت وارد کردن داده‌های services.json و tariffs.json به دیتابیس از طریق Prisma.
+ * اسکریپت وارد کردن داده‌های admin.json، services.json و tariffs.json به دیتابیس از طریق Prisma.
  *
  * اجرا (با tsx):
  *   npx tsx prisma/seed-services-tariffs.ts <CLINIC_ID> [DATA_DIR]
  *
  * DATA_DIR اختیاری است؛ اگر داده نشود، همین پوشه (prisma/) انتظار می‌رود
- * services.json و tariffs.json کنار اسکریپت باشند. نصب‌کننده لوکال پوشه
- * data جداگانه را پاس می‌دهد.
+ * admin.json، services.json و tariffs.json کنار اسکریپت باشند. نصب‌کننده لوکال
+ * پوشه data جداگانه را پاس می‌دهد.
+ *
+ * نکته: مثل seed.ts فعلی، ورود مدیر بدون رمز است (فقط کدملی + شماره تماس).
  */
 
 import 'dotenv/config';
@@ -17,6 +19,13 @@ import path from 'node:path';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL || '' });
 const prisma = new PrismaClient({ adapter });
+
+type AdminRow = {
+  nationalCode: string;
+  phone: string;
+  fullName: string;
+  role: 'manager' | 'secretary';
+};
 
 type ServiceRow = {
   service_type: 'orthosis' | 'prosthesis';
@@ -43,12 +52,15 @@ async function main() {
   }
 
   const dataDir = process.argv[3] || __dirname;
+  const adminPath = path.join(dataDir, 'admin.json');
   const servicesPath = path.join(dataDir, 'services.json');
   const tariffsPath = path.join(dataDir, 'tariffs.json');
 
-  if (!fs.existsSync(servicesPath) || !fs.existsSync(tariffsPath)) {
-    console.error(`فایل‌های داده پیدا نشد: ${servicesPath} یا ${tariffsPath}`);
-    process.exit(1);
+  for (const p of [adminPath, servicesPath, tariffsPath]) {
+    if (!fs.existsSync(p)) {
+      console.error(`فایل داده پیدا نشد: ${p}`);
+      process.exit(1);
+    }
   }
 
   const clinic = await prisma.clinic.findUnique({ where: { id: clinicId } });
@@ -57,8 +69,33 @@ async function main() {
     process.exit(1);
   }
 
+  const admins: AdminRow[] = JSON.parse(fs.readFileSync(adminPath, 'utf-8'));
   const services: ServiceRow[] = JSON.parse(fs.readFileSync(servicesPath, 'utf-8'));
   const tariffs: TariffRow[] = JSON.parse(fs.readFileSync(tariffsPath, 'utf-8'));
+
+  console.log(`در حال وارد کردن ${admins.length} کاربر برای کلینیک ${clinic.name}...`);
+
+  for (const a of admins) {
+    await prisma.user.upsert({
+      where: {
+        clinicId_nationalCode: { clinicId, nationalCode: a.nationalCode },
+      },
+      update: {
+        phone: a.phone,
+        fullName: a.fullName,
+        role: a.role,
+        isActive: true,
+      },
+      create: {
+        clinicId,
+        nationalCode: a.nationalCode,
+        phone: a.phone,
+        fullName: a.fullName,
+        role: a.role,
+      },
+    });
+    console.log(`✅ کاربر ${a.fullName} (${a.nationalCode}) آماده شد.`);
+  }
 
   console.log(`در حال وارد کردن ${services.length} خدمت برای کلینیک ${clinic.name}...`);
 
@@ -116,7 +153,7 @@ async function main() {
     if (tariffCount % 200 === 0) console.log(`  ${tariffCount}/${tariffs.length}`);
   }
 
-  console.log(`تمام شد. ${serviceCount} خدمت و ${tariffCount} تعرفه وارد شد.`);
+  console.log(`تمام شد. ${admins.length} کاربر، ${serviceCount} خدمت و ${tariffCount} تعرفه وارد شد.`);
 }
 
 main()
