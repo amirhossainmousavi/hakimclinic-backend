@@ -3,10 +3,12 @@ import { ServiceType } from '@prisma/client';
 
 export const createServiceSchema = z.object({
   serviceType: z.nativeEnum(ServiceType),
-  treatmentProcess: z.string().min(1, 'فرآیند درمان الزامی است'),
+  serviceName: z.string().min(1, 'نام خدمت الزامی است'),
   serviceCode: z.string().min(1, 'کد خدمت الزامی است'),
   price: z.number().min(0, 'قیمت باید بزرگتر یا مساوی صفر باشد'),
   description: z.string().optional().nullable(),
+  regionOrSection: z.string().optional().nullable(),
+  treatmentProcess: z.string().optional().nullable(),
 });
 
 export const updateServiceSchema = createServiceSchema.partial();

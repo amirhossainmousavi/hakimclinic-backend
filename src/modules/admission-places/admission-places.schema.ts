@@ -4,6 +4,8 @@ import { AdmissionPlaceType } from '@prisma/client';
 export const createAdmissionPlaceSchema = z.object({
   name: z.string().min(1, 'نام محل پذیرش الزامی است'),
   address: z.string().min(1, 'آدرس محل پذیرش الزامی است'),
+  phone: z.string().optional().nullable(),
+  centerNumbers: z.array(z.string()).optional(),
   description: z.string().optional().nullable(),
   admissionType: z.nativeEnum(AdmissionPlaceType),
   insuranceIds: z.array(z.string().uuid()).optional(),

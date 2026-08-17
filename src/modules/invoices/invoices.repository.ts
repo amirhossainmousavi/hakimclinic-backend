@@ -5,7 +5,7 @@ import { CreateInvoiceInput, GetInvoicesQuery } from './invoices.schema';
 function flattenInvoiceItems(items: any[]) {
   return items.map(({ service, tariff, ...rest }) => ({
     ...rest,
-    serviceName: service?.treatmentProcess ?? null,
+    serviceName: service?.serviceName ?? service?.serviceCode ?? null,
     tariffId: tariff?.id ?? null,
     tariffName: tariff?.itemDescription ?? null,
   }));
@@ -13,18 +13,35 @@ function flattenInvoiceItems(items: any[]) {
 
 export class InvoicesRepository {
   async create(clinicId: string, userId: string, data: CreateInvoiceInput) {
-    const { items, ...invoiceData } = data;
+    const { items, admissionPlaceId, ...invoiceData } = data;
 
     // Calculate total amount from items
     const totalAmount = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity - item.discountAmount), 0) - (data.discountTotal || 0) - (data.prepaidAmount || 0);
 
     return prisma.$transaction(async (tx) => {
+      // Snapshot the admission place at invoice creation time so the PDF
+      // stays correct even if the place is later edited.
+      let admissionPlaceSnapshot: { name: string; address: string; phone: string | null; centerNumbers: string[] } | null = null;
+      if (admissionPlaceId) {
+        const place = await tx.admissionPlace.findFirst({
+          where: { id: admissionPlaceId, clinicId, deletedAt: null },
+          select: { name: true, address: true, phone: true, centerNumbers: true },
+        });
+        if (place) {
+          admissionPlaceSnapshot = place;
+        }
+      }
+
       const invoice = await tx.invoice.create({
         data: {
           ...invoiceData,
           clinicId,
           createdByUserId: userId,
           totalAmount: totalAmount > 0 ? totalAmount : 0,
+          admissionPlaceName: admissionPlaceSnapshot?.name ?? null,
+          admissionPlaceAddress: admissionPlaceSnapshot?.address ?? null,
+          admissionPlacePhone: admissionPlaceSnapshot?.phone ?? null,
+          admissionPlaceCenterNumbers: admissionPlaceSnapshot?.centerNumbers ?? [],
         },
       });
 
@@ -44,7 +61,7 @@ export class InvoicesRepository {
           items: {
             include: { service: true, tariff: true },
           },
-          patient: { select: { fullName: true, fileNumber: true } },
+          patient: { select: { fullName: true, fileNumber: true, customFileNumber: true, nationalCode: true, phone: true } },
         },
       });
       if (!created) return null;
@@ -52,6 +69,10 @@ export class InvoicesRepository {
       return {
         ...invoiceRest,
         patientName: patient?.fullName ?? null,
+        patientFileNumber: patient?.fileNumber ?? null,
+        patientCustomFileNumber: patient?.customFileNumber ?? null,
+        patientNationalCode: patient?.nationalCode ?? null,
+        patientPhone: patient?.phone ?? null,
         items: flattenInvoiceItems(createdItems),
       };
     });
@@ -64,7 +85,7 @@ export class InvoicesRepository {
         items: {
           include: { service: true, tariff: true },
         },
-        patient: { select: { fullName: true, fileNumber: true } },
+        patient: { select: { fullName: true, fileNumber: true, customFileNumber: true, nationalCode: true, phone: true } },
         createdBy: { select: { id: true, fullName: true } },
         clinic: true,
       },
@@ -75,6 +96,10 @@ export class InvoicesRepository {
     return {
       ...rest,
       patientName: patient?.fullName ?? null,
+      patientFileNumber: patient?.fileNumber ?? null,
+      patientCustomFileNumber: patient?.customFileNumber ?? null,
+      patientNationalCode: patient?.nationalCode ?? null,
+      patientPhone: patient?.phone ?? null,
       items: flattenInvoiceItems(items),
     };
   }
@@ -98,7 +123,7 @@ export class InvoicesRepository {
       return {
         id: `pf-${item.serviceId}`,
         serviceId: item.serviceId,
-        serviceName: service?.treatmentProcess ?? null,
+        serviceName: service?.serviceName ?? service?.serviceCode ?? null,
         tariffId: item.tariffId ?? null,
         tariffName: tariff?.itemDescription ?? null,
         quantity: item.quantity,
@@ -147,7 +172,7 @@ export class InvoicesRepository {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          patient: { select: { fullName: true, fileNumber: true } },
+          patient: { select: { fullName: true, fileNumber: true, customFileNumber: true, nationalCode: true, phone: true } },
         },
       }),
       prisma.invoice.count({ where }),
@@ -156,6 +181,10 @@ export class InvoicesRepository {
     const flatItems = items.map(({ patient, ...rest }) => ({
       ...rest,
       patientName: patient?.fullName ?? null,
+      patientFileNumber: patient?.fileNumber ?? null,
+      patientCustomFileNumber: patient?.customFileNumber ?? null,
+      patientNationalCode: patient?.nationalCode ?? null,
+      patientPhone: patient?.phone ?? null,
     }));
 
     return { items: flatItems, total };

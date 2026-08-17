@@ -1,10 +1,27 @@
 import { prisma } from '../../common/prisma/prisma.client';
 import { CreatePatientInput, GetPatientsQuery, InsuranceApprovalInput, UpdatePatientInput, AttachPatientServiceInput } from './patients.schema';
 import { PatientStatus } from '@prisma/client';
+import { ConflictError } from '../../common/errors/custom.error';
 
 export class PatientsRepository {
+  private async ensureCustomFileNumberUnique(clinicId: string, customFileNumber: string, excludeId?: string) {
+    const existing = await prisma.patient.findFirst({
+      where: {
+        clinicId,
+        customFileNumber,
+        deletedAt: null,
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new ConflictError('این شماره پرونده اختصاصی قبلاً برای بیمار دیگری ثبت شده است', 'DUPLICATE_CUSTOM_FILE_NUMBER');
+    }
+  }
+
   async create(clinicId: string, userId: string, data: CreatePatientInput) {
     const fileNumber = data.fileNumber || `PR-${Date.now()}`;
+    await this.ensureCustomFileNumberUnique(clinicId, data.customFileNumber);
     const status: PatientStatus =
       data.admissionType === 'free' ? 'admitted' : 'pending_insurance_approval';
 
@@ -103,7 +120,11 @@ export class PatientsRepository {
     }
 
     if (search) {
-      where.nationalCode = { contains: search };
+      where.OR = [
+        { customFileNumber: { contains: search } },
+        { nationalCode: { contains: search } },
+        { fullName: { contains: search } },
+      ];
     }
 
     const [items, total] = await Promise.all([
@@ -143,6 +164,10 @@ export class PatientsRepository {
       where: { id, clinicId, deletedAt: null },
     });
     if (!patient) return null;
+
+    if (data.customFileNumber) {
+      await this.ensureCustomFileNumberUnique(clinicId, data.customFileNumber, id);
+    }
 
     const updated = await prisma.patient.update({
       where: { id },

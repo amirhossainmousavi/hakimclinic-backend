@@ -5,13 +5,32 @@ const includeRelations = {
   insurances: { include: { insurance: true } },
 } as const;
 
+/**
+ * Keep `phone` and `centerNumbers` in sync: centerNumbers holds the full list
+ * and its first element is the primary phone. Explicit centerNumbers (from the
+ * form) wins; otherwise a lone phone becomes a single-entry list.
+ */
+function normalizeCenterNumbers(phone: string | null | undefined, centerNumbers: string[] | undefined): string[] {
+  if (Array.isArray(centerNumbers) && centerNumbers.length > 0) {
+    return centerNumbers.map((n) => n.trim()).filter(Boolean);
+  }
+  if (phone) return [phone.trim()];
+  return [];
+}
+
 export class AdmissionPlacesRepository {
   async create(clinicId: string, data: CreateAdmissionPlaceInput) {
-    const { insuranceIds, ...placeData } = data;
+    const { insuranceIds, centerNumbers, phone, ...placeData } = data;
+    const numbers = normalizeCenterNumbers(phone, centerNumbers);
 
     return prisma.$transaction(async (tx) => {
       const place = await tx.admissionPlace.create({
-        data: { ...placeData, clinicId },
+        data: {
+          ...placeData,
+          clinicId,
+          phone: numbers[0] ?? null,
+          centerNumbers: numbers,
+        },
       });
 
       await tx.admissionPlaceInsurance.createMany({
@@ -45,7 +64,7 @@ export class AdmissionPlacesRepository {
   }
 
   async update(clinicId: string, id: string, data: UpdateAdmissionPlaceInput) {
-    const { insuranceIds, ...placeData } = data;
+    const { insuranceIds, centerNumbers, phone, ...placeData } = data;
 
     return prisma.$transaction(async (tx) => {
       const existing = await tx.admissionPlace.findFirst({
@@ -53,9 +72,19 @@ export class AdmissionPlacesRepository {
       });
       if (!existing) return null;
 
+      const phoneProvided = phone !== undefined;
+      const numbers = normalizeCenterNumbers(
+        phoneProvided ? phone : existing.phone,
+        centerNumbers !== undefined ? centerNumbers : existing.centerNumbers
+      );
+
       const place = await tx.admissionPlace.update({
         where: { id },
-        data: placeData,
+        data: {
+          ...placeData,
+          ...(phoneProvided ? { phone: numbers[0] ?? null } : {}),
+          centerNumbers: numbers,
+        },
       });
 
       if (insuranceIds) {

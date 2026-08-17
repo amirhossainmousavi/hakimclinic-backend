@@ -11,6 +11,7 @@ export const invoiceItemSchema = z.object({
 
 export const createInvoiceSchema = z.object({
   patientId: z.string().uuid(),
+  admissionPlaceId: z.string().uuid().optional().nullable(),
   invoiceNumber: z.string().min(1).default(`INV-${Date.now()}`),
   invoiceType: z.nativeEnum(InvoiceType),
   paymentType: z.nativeEnum(PaymentType),

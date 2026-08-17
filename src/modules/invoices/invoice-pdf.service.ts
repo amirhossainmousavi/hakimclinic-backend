@@ -127,13 +127,20 @@ export interface InvoicePdfItem {
 export interface InvoicePdfData {
   invoiceNumber: string;
   fileNumber: string;
+  customFileNumber: string;
   issueDate: string; // solar
   invoiceType: 'final' | 'pro_forma';
   paymentTypeLabel: string;
   patientName: string;
+  patientNationalCode: string;
+  patientPhone: string;
   doctorName: string | null;
   clinicName: string;
   clinicPhone: string;
+  admissionPlaceName: string | null;
+  admissionPlaceAddress: string | null;
+  admissionPlacePhone: string | null;
+  admissionPlaceCenterNumbers: string[];
   items: InvoicePdfItem[];
   subtotal: number;
   discountTotal: number;
@@ -183,6 +190,23 @@ export function buildInvoiceHtml(d: InvoicePdfData): string {
       ? `<tr class="prepaid"><td class="k">پیش‌پرداخت شده</td><td class="v">${formatPrice(d.prepaidAmount)}</td></tr>
          <tr class="prepaid"><td class="k">هزینه پرداخت‌نشده (قابل پرداخت)</td><td class="v">${formatPrice(d.finalTotal)}</td></tr>`
       : '';
+
+  // Medical center / admission place details — printed in the page footer (no heading).
+  const centerLines: string[] = [];
+  if (d.admissionPlaceName) centerLines.push(`<span>${esc(d.admissionPlaceName)}</span>`);
+  if (d.admissionPlaceAddress) centerLines.push(`<span>${esc(d.admissionPlaceAddress)}</span>`);
+  const centerNumbers = (d.admissionPlaceCenterNumbers.length > 0
+    ? d.admissionPlaceCenterNumbers
+    : d.admissionPlacePhone
+      ? [d.admissionPlacePhone]
+      : []
+  );
+  centerNumbers.forEach((n) => {
+    if (n) centerLines.push(`<span class="ltr">${esc(n)}</span>`);
+  });
+  const admissionPlaceFooter = centerLines.length > 0
+    ? `<div class="admission-place-footer">${centerLines.join('<span class="dot">·</span>')}</div>`
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -354,6 +378,29 @@ export function buildInvoiceHtml(d: InvoicePdfData): string {
   }
   .sign-box b { display: block; margin-bottom: 2mm; font-size: 11px; color: #111827; }
 
+  /* ---------- Admission place footer (bottom) ---------- */
+  .admission-place-footer {
+    margin-top: 4mm;
+    padding: 2.5mm 4mm;
+    border: 1px solid #cbd5e1;
+    border-radius: 3px;
+    background: #f8fafc;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 2mm;
+    font-size: 10px;
+    color: #374151;
+    text-align: center;
+  }
+  .admission-place-footer .ltr {
+    direction: ltr;
+    unicode-bidi: embed;
+    font-variant-numeric: tabular-nums;
+  }
+  .admission-place-footer .dot { color: #94a3b8; }
+
   /* ---------- Footer ---------- */
   .footer {
     margin-top: 4mm;
@@ -387,13 +434,18 @@ export function buildInvoiceHtml(d: InvoicePdfData): string {
     <table class="meta">
       <tr>
         <td><span class="k">شماره فاکتور</span><br><span class="v">${esc(d.invoiceNumber)}</span></td>
-        <td><span class="k">شماره پرونده</span><br><span class="v">${esc(d.fileNumber)}</span></td>
         <td><span class="k">تاریخ صدور</span><br><span class="v">${esc(d.issueDate)}</span></td>
+        <td><span class="k">نحوه پرداخت</span><br><span class="v">${esc(d.paymentTypeLabel)}</span></td>
       </tr>
       <tr>
-        <td><span class="k">نام بیمار</span><br><span class="v">${esc(d.patientName)}</span></td>
+        <td><span class="k">نام و نام خانوادگی بیمار</span><br><span class="v">${esc(d.patientName)}</span></td>
+        <td><span class="k">کد ملی بیمار</span><br><span class="v">${esc(d.patientNationalCode)}</span></td>
+        <td><span class="k">شماره موبایل بیمار</span><br><span class="v">${esc(d.patientPhone)}</span></td>
+      </tr>
+      <tr>
+        <td><span class="k">شماره پرونده</span><br><span class="v">${esc(d.fileNumber)}</span></td>
+        <td><span class="k">شماره پرونده اختصاصی</span><br><span class="v">${esc(d.customFileNumber)}</span></td>
         <td>${d.doctorName ? `<span class="k">پزشک معرف</span><br><span class="v">${esc(d.doctorName)}</span>` : ''}</td>
-        <td><span class="k">نحوه پرداخت</span><br><span class="v">${esc(d.paymentTypeLabel)}</span></td>
       </tr>
     </table>
 
@@ -427,6 +479,8 @@ export function buildInvoiceHtml(d: InvoicePdfData): string {
       <div class="sign-box"><b>نام و امضای تحویل‌دهنده</b></div>
       <div class="sign-box"><b>نام و امضای تحویل‌گیرنده</b></div>
     </div>
+
+    ${admissionPlaceFooter}
 
     <div class="footer">
       <span>این سند صرفاً جنبه اطلاع‌رسانی دارد</span>
@@ -506,9 +560,10 @@ export function mapInvoiceToPdf(invoice: any): InvoicePdfData {
   const items: InvoicePdfItem[] = (invoice.items ?? []).map((item: any) => {
     const service = item.service ?? {};
     const tariff = item.tariff ?? {};
-    const brand = tariff.itemDescription || service.treatmentProcess || '';
+    const serviceLabel = service.serviceName || service.serviceCode || '';
+    const brand = tariff.itemDescription || serviceLabel || '';
     const code = tariff.itemCode || service.serviceCode || '-';
-    const description = brand ? `${service.treatmentProcess || ''} — ${brand}` : service.treatmentProcess || '—';
+    const description = brand ? `${serviceLabel || ''} — ${brand}` : serviceLabel || '—';
     const unitPrice = Number(item.unitPrice ?? 0);
     const discountAmount = Number(item.discountAmount ?? 0);
     const quantity = Number(item.quantity ?? 1);
@@ -536,14 +591,23 @@ export function mapInvoiceToPdf(invoice: any): InvoicePdfData {
   return {
     invoiceNumber: invoice.invoiceNumber ?? invoice.id ?? '-',
     fileNumber: patient.fileNumber ?? '-',
+    customFileNumber: patient.customFileNumber ?? '-',
     issueDate: toJalaliString(invoice.createdAt ? new Date(invoice.createdAt) : new Date()),
     invoiceType: invoice.invoiceType ?? 'final',
     paymentTypeLabel:
       invoice.paymentType === 'pos' ? 'POS' : invoice.paymentType === 'bank_transfer' ? 'انتقال به حساب' : 'کارت به کارت',
     patientName: patient.fullName ?? '-',
+    patientNationalCode: patient.nationalCode ?? '-',
+    patientPhone: patient.phone ?? '-',
     doctorName: patient.suggestedDoctor ?? null,
     clinicName: clinic.name ?? 'کلینیک ارتوپدی فنی حکیم',
     clinicPhone: clinic.phone ?? '-',
+    admissionPlaceName: invoice.admissionPlaceName ?? null,
+    admissionPlaceAddress: invoice.admissionPlaceAddress ?? null,
+    admissionPlacePhone: invoice.admissionPlacePhone ?? null,
+    admissionPlaceCenterNumbers: Array.isArray(invoice.admissionPlaceCenterNumbers)
+      ? invoice.admissionPlaceCenterNumbers
+      : [],
     items,
     subtotal,
     discountTotal,
